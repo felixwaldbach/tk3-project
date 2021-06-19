@@ -1,6 +1,7 @@
 package de.darmstadt.tk
 
 import android.Manifest
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.util.Log
@@ -14,9 +15,10 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewModelScope
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
+import de.darmstadt.tk.background.ActivityReceiver
 import de.darmstadt.tk.background.SleepWorker
 import de.darmstadt.tk.ui.theme.SensingAppTheme
-import de.patrick.keyattestation.MainViewModel
+import de.darmstadt.tk.viewmodel.MainViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.util.concurrent.TimeUnit
@@ -25,6 +27,10 @@ class MainActivity : ComponentActivity() {
 
     val TAG = "MainActivity"
     private val viewModel by viewModels<MainViewModel>()
+
+    private var mTransitionsReceiver: ActivityReceiver? = null;
+
+
 
     val requestPermissionLauncher =
         registerForActivityResult(
@@ -44,22 +50,30 @@ class MainActivity : ComponentActivity() {
 
 //        setupWorkers()
         checkPermission()
+        mTransitionsReceiver = ActivityReceiver()
+
 
         setContent {
             SensingAppTheme {
                 // A surface container using the 'background' color from the theme
                 Surface(color = MaterialTheme.colors.background) {
-                    MainScreen(viewModel::startTracking)
+                    MainScreen(viewModel::startTracking,
+                    viewModel.eventList)
                 }
             }
         }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        registerReceiver(mTransitionsReceiver, IntentFilter(viewModel.TRANSITIONS_RECEIVER_ACTION));
     }
 
     private fun checkPermission() {
         viewModel.viewModelScope.launch(Dispatchers.Default) {
             when {
                 ContextCompat.checkSelfPermission(
-                    baseContext,
+                    applicationContext,
                     Manifest.permission.ACTIVITY_RECOGNITION
                 ) == PackageManager.PERMISSION_GRANTED -> {
                     Log.i(TAG,"Permission ACTIVITY_RECOGNITION GRANTED")

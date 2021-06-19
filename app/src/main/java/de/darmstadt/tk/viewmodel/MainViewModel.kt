@@ -1,58 +1,37 @@
-package de.patrick.keyattestation
+package de.darmstadt.tk.viewmodel
 
-import android.annotation.SuppressLint
 import android.app.Application
 import android.app.PendingIntent
-import android.content.ClipData
-import android.content.ClipboardManager
 import android.content.Intent
-import android.os.Build
-import android.security.keystore.KeyGenParameterSpec
-import android.security.keystore.KeyProperties
-import android.util.Base64
 import android.util.Log
-import android.widget.Toast
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.viewModelScope
 import com.google.android.gms.location.*
-import de.darmstadt.tk.background.ActivityReceiver
-import de.darmstadt.tk.background.SleepReceiver
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import java.security.KeyPairGenerator
-import java.security.KeyStore
-import java.security.cert.Certificate
-import java.security.cert.X509Certificate
-import java.security.spec.PKCS8EncodedKeySpec
-import androidx.annotation.NonNull
 
 import com.google.android.gms.tasks.OnFailureListener
 
 import com.google.android.gms.tasks.OnSuccessListener
-
-
-
+import de.darmstadt.tk.BuildConfig
+import de.darmstadt.tk.data.Event
+import de.darmstadt.tk.repo.MemEventRepo
 
 
 class MainViewModel(var appCtx: Application) : AndroidViewModel(appCtx) {
     private val TAG: String = this::class.java.name
 
-    var state by mutableStateOf(0);
+
+    var eventList = MemEventRepo.fetchEvents()
+
+    val TRANSITIONS_RECEIVER_ACTION =
+        BuildConfig.APPLICATION_ID + "TRANSITIONS_RECEIVER_ACTION"
 
     fun startTracking() {
         setupActivityTransition()
         setupSleepTransition()
     }
 
-    fun startAttestation() {
-        viewModelScope.launch(Dispatchers.Default) {
-
-        }
-    }
 
     private fun setupActivityTransition() {
         Log.d(TAG, "setupActivityTransition")
@@ -69,10 +48,13 @@ class MainViewModel(var appCtx: Application) : AndroidViewModel(appCtx) {
 
         val request = ActivityTransitionRequest(transitions)
 
+        val intent = Intent(TRANSITIONS_RECEIVER_ACTION)
+        PendingIntent.getBroadcast(appCtx, 0, intent, 0)
+
         val pendingIntent = PendingIntent.getBroadcast(
             appCtx,
             0,
-            Intent(appCtx, ActivityReceiver::class.java),
+            intent,
             PendingIntent.FLAG_CANCEL_CURRENT
         )
 
@@ -81,27 +63,44 @@ class MainViewModel(var appCtx: Application) : AndroidViewModel(appCtx) {
 
         task.addOnSuccessListener(
             OnSuccessListener<Void?> {
-                Log.i(TAG,"Transitions Api was successfully registered.")
+                Log.i(TAG, "Transitions Api was successfully registered.")
+                MemEventRepo.insertEvent(Event("Transitions-API", "Successfully registered"))
             })
         task.addOnFailureListener(
             OnFailureListener { e ->
                 Log.e(TAG, "Transitions Api could NOT be registered: $e")
+                MemEventRepo.insertEvent(Event("Transitions-API", "Could NOT be registered"))
             })
     }
 
     private fun setupSleepTransition() {
         Log.d(TAG, "setupSleepTransition")
+        val intent = Intent(TRANSITIONS_RECEIVER_ACTION)
+        PendingIntent.getBroadcast(appCtx, 0, intent, 0)
+
         val pendingIntent = PendingIntent.getBroadcast(
             appCtx,
             0,
-            Intent(appCtx, SleepReceiver::class.java),
+            intent,
             PendingIntent.FLAG_CANCEL_CURRENT
         )
 
-        ActivityRecognition.getClient(appCtx).requestSleepSegmentUpdates(
-            pendingIntent,
-            SleepSegmentRequest.getDefaultSleepSegmentRequest()
-        )
+        val task =
+            ActivityRecognition.getClient(appCtx).requestSleepSegmentUpdates(
+                pendingIntent,
+                SleepSegmentRequest.getDefaultSleepSegmentRequest()
+            )
+
+        task.addOnSuccessListener(
+            OnSuccessListener<Void?> {
+                Log.i(TAG, "SLEEP Api was successfully registered.")
+                MemEventRepo.insertEvent(Event("SLEEP-API", "Successfully registered"))
+            })
+        task.addOnFailureListener(
+            OnFailureListener { e ->
+                Log.e(TAG, "SLEEP Api could NOT be registered: $e")
+                MemEventRepo.insertEvent(Event("SLEEP-API", "Could NOT be registered"))
+            })
     }
 
 }
