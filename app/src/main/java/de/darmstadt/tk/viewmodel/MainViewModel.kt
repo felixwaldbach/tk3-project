@@ -14,6 +14,8 @@ import com.google.android.gms.tasks.OnFailureListener
 
 import com.google.android.gms.tasks.OnSuccessListener
 import de.darmstadt.tk.BuildConfig
+import de.darmstadt.tk.background.ActivityReceiver
+import de.darmstadt.tk.background.SleepReceiver
 import de.darmstadt.tk.data.Event
 import de.darmstadt.tk.repo.MemEventRepo
 
@@ -49,7 +51,7 @@ class MainViewModel(var appCtx: Application) : AndroidViewModel(appCtx) {
         val request = ActivityTransitionRequest(transitions)
 
         val intent = Intent(TRANSITIONS_RECEIVER_ACTION)
-        PendingIntent.getBroadcast(appCtx, 0, intent, 0)
+        val intent2 = Intent(appCtx,ActivityReceiver::class.java)
 
         val pendingIntent = PendingIntent.getBroadcast(
             appCtx,
@@ -58,7 +60,8 @@ class MainViewModel(var appCtx: Application) : AndroidViewModel(appCtx) {
             PendingIntent.FLAG_CANCEL_CURRENT
         )
 
-        val task = ActivityRecognition.getClient(appCtx)
+        val client = ActivityRecognition.getClient(appCtx)
+        val task = client
             .requestActivityTransitionUpdates(request, pendingIntent)
 
         task.addOnSuccessListener(
@@ -71,18 +74,36 @@ class MainViewModel(var appCtx: Application) : AndroidViewModel(appCtx) {
                 Log.e(TAG, "Transitions Api could NOT be registered: $e")
                 MemEventRepo.insertEvent(Event("Transitions-API", "Could NOT be registered"))
             })
+
+//        val intentAC = Intent(TRANSITIONS_RECEIVER_ACTION)
+//        PendingIntent.getBroadcast(appCtx, 0, intent, 0)
+//
+//        val pendingIntentAC = PendingIntent.getBroadcast(
+//            appCtx,
+//            0,
+//            intentAC,
+//            PendingIntent.FLAG_UPDATE_CURRENT
+//        )
+//        val requestActivityUpdates = client.requestActivityUpdates(20000, pendingIntentAC)
+//        requestActivityUpdates.addOnSuccessListener(
+//            OnSuccessListener<Void?> {
+//                Log.i(TAG, "Transitions ApiOLD was successfully registered.")
+//                MemEventRepo.insertEvent(Event("Transitions-API-O", "Successfully registered"))
+//            })
+//        requestActivityUpdates.addOnFailureListener(
+//            OnFailureListener { e ->
+//                Log.e(TAG, "Transitions ApiOLD could NOT be registered: $e")
+//                MemEventRepo.insertEvent(Event("Transitions-API-O", "Could NOT be registered"))
+//            })
     }
 
     private fun setupSleepTransition() {
         Log.d(TAG, "setupSleepTransition")
-        val intent = Intent(TRANSITIONS_RECEIVER_ACTION)
-        PendingIntent.getBroadcast(appCtx, 0, intent, 0)
-
         val pendingIntent = PendingIntent.getBroadcast(
             appCtx,
             0,
-            intent,
-            PendingIntent.FLAG_CANCEL_CURRENT
+            Intent(appCtx, SleepReceiver::class.java),
+            0
         )
 
         val task =

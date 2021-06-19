@@ -9,10 +9,17 @@ import com.google.android.gms.location.SleepSegmentEvent
 import de.darmstadt.tk.data.Event
 import de.darmstadt.tk.repo.MemEventRepo
 import java.time.Instant
+import java.time.LocalTime
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
+import java.util.*
 
-class SleepReceiver: BroadcastReceiver() {
+class SleepReceiver : BroadcastReceiver() {
     val TAG = "SleepReciever"
+    var formatter = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.SHORT)
+        .withLocale(Locale.GERMANY)
+        .withZone(ZoneId.systemDefault())
 
     override fun onReceive(context: Context?, intent: Intent?) {
         Log.d(TAG, "onReceive(): $intent")
@@ -22,8 +29,11 @@ class SleepReceiver: BroadcastReceiver() {
                 SleepSegmentEvent.extractEvents(intent)
             Log.d(TAG, "SleepSegmentEvent List: $sleepSegmentEvents")
             for (sleep in sleepSegmentEvents) {
+                val startTime = Instant.ofEpochMilli(sleep.startTimeMillis)
+                val endTime = Instant.ofEpochMilli(sleep.endTimeMillis)
+                val sleepDurationmili = sleep.segmentDurationMillis
                 val desc =
-                    sleep.toString() + " TIMESTAMP: " + DateTimeFormatter.ISO_TIME.format(Instant.now())
+                    "${LocalTime.now()} :: Start Time: ${formatter.format(startTime)}, duration: ${sleepDurationmili / 1_000} sec, endtime: ${formatter.format(endTime)}"
                 MemEventRepo.insertEvent(Event("Sleep-API", desc))
             }
         } else if (SleepClassifyEvent.hasEvents(intent)) {
@@ -32,8 +42,7 @@ class SleepReceiver: BroadcastReceiver() {
             Log.d(TAG, "SleepClassifyEvent List: $sleepClassifyEvents")
 
             for (sleep in sleepClassifyEvents) {
-                val desc =
-                    sleep.toString() + " TIMESTAMP: " + DateTimeFormatter.ISO_TIME.format(Instant.now())
+                val desc = "${LocalTime.now()} :: Confidence: ${sleep.confidence}, light: ${sleep.light}, motion ${sleep.motion}"
                 MemEventRepo.insertEvent(Event("Sleep-API", desc))
             }
         }
