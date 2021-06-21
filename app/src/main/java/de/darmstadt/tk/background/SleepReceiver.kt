@@ -8,6 +8,7 @@ import com.google.android.gms.location.SleepClassifyEvent
 import com.google.android.gms.location.SleepSegmentEvent
 import de.darmstadt.tk.data.Event
 import de.darmstadt.tk.repo.MemEventRepo
+import de.darmstadt.tk.service.ServiceLocator
 import java.time.Instant
 import java.time.LocalTime
 import java.time.ZoneId
@@ -20,7 +21,7 @@ class SleepReceiver : BroadcastReceiver() {
     var formatter = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.SHORT)
         .withLocale(Locale.GERMANY)
         .withZone(ZoneId.systemDefault())
-
+    val repo = ServiceLocator.getRepository()
     override fun onReceive(context: Context?, intent: Intent?) {
         Log.d(TAG, "onReceive(): $intent")
 
@@ -34,7 +35,7 @@ class SleepReceiver : BroadcastReceiver() {
                 val sleepDurationmili = sleep.segmentDurationMillis
                 val desc =
                     "${LocalTime.now()} :: Start Time: ${formatter.format(startTime)}, duration: ${sleepDurationmili / 1_000} sec, endtime: ${formatter.format(endTime)}"
-                MemEventRepo.insertEvent(Event("Sleep-API", desc))
+                repo.insertEvent(Event("Sleep-API", desc))
             }
         } else if (SleepClassifyEvent.hasEvents(intent)) {
             val sleepClassifyEvents: List<SleepClassifyEvent> =
@@ -43,7 +44,7 @@ class SleepReceiver : BroadcastReceiver() {
 
             for (sleep in sleepClassifyEvents) {
                 val desc = "${LocalTime.now()} :: Confidence: ${sleep.confidence}, light: ${sleep.light}, motion ${sleep.motion}"
-                MemEventRepo.insertEvent(Event("Sleep-API", desc))
+                repo.insertEvent(Event("Sleep-API", desc))
             }
         }
     }

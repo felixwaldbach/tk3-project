@@ -29,10 +29,10 @@ fun MainScreen(startTracking: () -> Unit, eventList: MutableList<Event>) {
             .padding(8.dp)
             .fillMaxWidth()
     ) {
-        Button(onClick = startTracking) {
-            Text(text = "Request permissions")
-        }
-
+//        Button(onClick = startTracking) {
+//            Text(text = "Request permissions")
+//        }
+//
 
         if (eventList.isEmpty())
             Text(

@@ -18,16 +18,20 @@ import de.darmstadt.tk.background.ActivityReceiver
 import de.darmstadt.tk.background.SleepReceiver
 import de.darmstadt.tk.data.Event
 import de.darmstadt.tk.repo.MemEventRepo
+import de.darmstadt.tk.service.ServiceLocator
 
 
 class MainViewModel(var appCtx: Application) : AndroidViewModel(appCtx) {
     private val TAG: String = this::class.java.name
+    val repo = ServiceLocator.getRepository()
 
-
-    var eventList = MemEventRepo.fetchEvents()
+    var eventList = repo.fetchEvents()
 
     val TRANSITIONS_RECEIVER_ACTION =
         BuildConfig.APPLICATION_ID + "TRANSITIONS_RECEIVER_ACTION"
+
+    val SLEEP_RECEIVER_ACTION =
+        BuildConfig.APPLICATION_ID + "SLEEP_RECEIVER_ACTION"
 
     fun startTracking() {
         setupActivityTransition()
@@ -51,7 +55,6 @@ class MainViewModel(var appCtx: Application) : AndroidViewModel(appCtx) {
         val request = ActivityTransitionRequest(transitions)
 
         val intent = Intent(TRANSITIONS_RECEIVER_ACTION)
-        val intent2 = Intent(appCtx,ActivityReceiver::class.java)
 
         val pendingIntent = PendingIntent.getBroadcast(
             appCtx,
@@ -67,14 +70,14 @@ class MainViewModel(var appCtx: Application) : AndroidViewModel(appCtx) {
         task.addOnSuccessListener(
             OnSuccessListener<Void?> {
                 Log.i(TAG, "Transitions Api was successfully registered.")
-                MemEventRepo.insertEvent(Event("Transitions-API", "Successfully registered"))
+                repo.insertEvent(Event("Transitions-API", "Successfully registered"))
             })
         task.addOnFailureListener(
             OnFailureListener { e ->
                 Log.e(TAG, "Transitions Api could NOT be registered: $e")
-                MemEventRepo.insertEvent(Event("Transitions-API", "Could NOT be registered"))
+                repo.insertEvent(Event("Transitions-API", "Could NOT be registered"))
             })
-
+//
 //        val intentAC = Intent(TRANSITIONS_RECEIVER_ACTION)
 //        PendingIntent.getBroadcast(appCtx, 0, intent, 0)
 //
@@ -88,22 +91,23 @@ class MainViewModel(var appCtx: Application) : AndroidViewModel(appCtx) {
 //        requestActivityUpdates.addOnSuccessListener(
 //            OnSuccessListener<Void?> {
 //                Log.i(TAG, "Transitions ApiOLD was successfully registered.")
-//                MemEventRepo.insertEvent(Event("Transitions-API-O", "Successfully registered"))
+//                repo.insertEvent(Event("Transitions-API-O", "Successfully registered"))
 //            })
 //        requestActivityUpdates.addOnFailureListener(
 //            OnFailureListener { e ->
 //                Log.e(TAG, "Transitions ApiOLD could NOT be registered: $e")
-//                MemEventRepo.insertEvent(Event("Transitions-API-O", "Could NOT be registered"))
+//                repo.insertEvent(Event("Transitions-API-O", "Could NOT be registered"))
 //            })
     }
 
     private fun setupSleepTransition() {
         Log.d(TAG, "setupSleepTransition")
+        val intent = Intent(SLEEP_RECEIVER_ACTION)
         val pendingIntent = PendingIntent.getBroadcast(
             appCtx,
             0,
-            Intent(appCtx, SleepReceiver::class.java),
-            0
+            intent,
+            PendingIntent.FLAG_CANCEL_CURRENT
         )
 
         val task =
@@ -115,12 +119,12 @@ class MainViewModel(var appCtx: Application) : AndroidViewModel(appCtx) {
         task.addOnSuccessListener(
             OnSuccessListener<Void?> {
                 Log.i(TAG, "SLEEP Api was successfully registered.")
-                MemEventRepo.insertEvent(Event("SLEEP-API", "Successfully registered"))
+                repo.insertEvent(Event("SLEEP-API", "Successfully registered"))
             })
         task.addOnFailureListener(
             OnFailureListener { e ->
                 Log.e(TAG, "SLEEP Api could NOT be registered: $e")
-                MemEventRepo.insertEvent(Event("SLEEP-API", "Could NOT be registered"))
+                repo.insertEvent(Event("SLEEP-API", "Could NOT be registered"))
             })
     }
 

@@ -16,7 +16,10 @@ import androidx.lifecycle.viewModelScope
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import de.darmstadt.tk.background.ActivityReceiver
+import de.darmstadt.tk.background.SleepReceiver
 import de.darmstadt.tk.background.SleepWorker
+import de.darmstadt.tk.data.Event
+import de.darmstadt.tk.service.ServiceLocator
 import de.darmstadt.tk.ui.theme.SensingAppTheme
 import de.darmstadt.tk.viewmodel.MainViewModel
 import kotlinx.coroutines.Dispatchers
@@ -29,6 +32,7 @@ class MainActivity : ComponentActivity() {
     private val viewModel by viewModels<MainViewModel>()
 
     private var mTransitionsReceiver: ActivityReceiver? = null;
+    private var mSleepReceiver: SleepReceiver? = null;
 
 
 
@@ -38,7 +42,9 @@ class MainActivity : ComponentActivity() {
         ) { isGranted: Boolean ->
             if (isGranted) {
                 Log.i(TAG, "Perm was GRANTED")
+                viewModel.startTracking()
             } else {
+                ServiceLocator.getRepository().insertEvent(Event("PERMISSION MISSING", "No permission to run the app"))
                 Log.i(TAG, "Perm not granted")
             }
         }
@@ -51,6 +57,7 @@ class MainActivity : ComponentActivity() {
 //        setupWorkers()
         checkPermission()
         mTransitionsReceiver = ActivityReceiver()
+        mSleepReceiver = SleepReceiver()
 
 
         setContent {
@@ -67,6 +74,7 @@ class MainActivity : ComponentActivity() {
     override fun onStart() {
         super.onStart()
         registerReceiver(mTransitionsReceiver, IntentFilter(viewModel.TRANSITIONS_RECEIVER_ACTION));
+        registerReceiver(mSleepReceiver, IntentFilter(viewModel.SLEEP_RECEIVER_ACTION));
     }
 
     private fun checkPermission() {
@@ -77,6 +85,7 @@ class MainActivity : ComponentActivity() {
                     Manifest.permission.ACTIVITY_RECOGNITION
                 ) == PackageManager.PERMISSION_GRANTED -> {
                     Log.i(TAG,"Permission ACTIVITY_RECOGNITION GRANTED")
+                    viewModel.startTracking()
                 }
                 else -> {
                     // You can directly ask for the permission.

@@ -13,12 +13,13 @@ import java.time.Instant
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import com.google.android.gms.location.DetectedActivity
-
-
+import de.darmstadt.tk.service.ServiceLocator
 
 
 class ActivityReceiver : BroadcastReceiver() {
     val TAG = "ActivityReceiver"
+    val repo = ServiceLocator.getRepository()
+
     override fun onReceive(context: Context?, intent: Intent?) {
         Log.i(TAG, "Received: $intent")
 
@@ -29,7 +30,7 @@ class ActivityReceiver : BroadcastReceiver() {
                 val type = getActivityTransitionString(event.transitionType)
 
                 val desc = "${LocalTime.now()} :: $name ($type) - Elapsed: ${event.elapsedRealTimeNanos/1_000_000_000} sec"
-                MemEventRepo.insertEvent(Event("Transitions-API", desc))
+                repo.insertEvent(Event("Transitions-API", desc))
             }
         }
     }

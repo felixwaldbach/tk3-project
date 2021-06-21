@@ -3,7 +3,7 @@ package de.darmstadt.tk.repo
 import androidx.compose.runtime.*
 import de.darmstadt.tk.data.Event
 
-object MemEventRepo : EventRepo {
+class MemEventRepo : EventRepo {
 
     var events = mutableStateListOf<Event>()
         private set
