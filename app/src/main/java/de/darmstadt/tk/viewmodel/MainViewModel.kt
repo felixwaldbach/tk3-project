@@ -33,9 +33,13 @@ class MainViewModel(var appCtx: Application) : AndroidViewModel(appCtx) {
     val SLEEP_RECEIVER_ACTION =
         BuildConfig.APPLICATION_ID + "SLEEP_RECEIVER_ACTION"
 
+    val ALDI_RECEIVER_ACTION =
+        BuildConfig.APPLICATION_ID + "ALDI_RECEIVER_ACTION"
+
     fun startTracking() {
         setupActivityTransition()
         setupSleepTransition()
+        setupAldiTransition()
     }
 
 
@@ -125,6 +129,49 @@ class MainViewModel(var appCtx: Application) : AndroidViewModel(appCtx) {
             OnFailureListener { e ->
                 Log.e(TAG, "SLEEP Api could NOT be registered: $e")
                 repo.insertEvent(Event("SLEEP-API", "Could NOT be registered"))
+            })
+    }
+
+    private fun setupAldiTransition() {
+        Log.d(TAG, "setupAldiTransition")
+
+        val transitions = mutableListOf<ActivityTransition>()
+
+        transitions += ActivityTransition.Builder()
+            .setActivityType(DetectedActivity.STILL)
+            .setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_ENTER)
+            .build()
+        transitions += ActivityTransition.Builder()
+            .setActivityType(DetectedActivity.STILL)
+            .setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_EXIT)
+            .build()
+
+        val intent = Intent(ALDI_RECEIVER_ACTION)
+        val pendingIntent = PendingIntent.getBroadcast(
+            appCtx,
+            0,
+            intent,
+            PendingIntent.FLAG_CANCEL_CURRENT
+        )
+
+
+        val request = ActivityTransitionRequest(transitions)
+
+        val task =
+            ActivityRecognition.getClient(appCtx).requestActivityTransitionUpdates(
+                request,
+                pendingIntent
+            )
+
+        task.addOnSuccessListener(
+            OnSuccessListener<Void?> {
+                Log.i(TAG, "ALDI Api was successfully registered.")
+                repo.insertEvent(Event("ALDI-API", "Successfully registered"))
+            })
+        task.addOnFailureListener(
+            OnFailureListener { e ->
+                Log.e(TAG, "ALDI Api could NOT be registered: $e")
+                repo.insertEvent(Event("ALDI-API", "Could NOT be registered"))
             })
     }
 
