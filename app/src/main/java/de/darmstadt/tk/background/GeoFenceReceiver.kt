@@ -3,15 +3,9 @@ package de.darmstadt.tk.background
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.provider.Settings.Global.getString
 import android.util.Log
-import androidx.compose.animation.core.LinearOutSlowInEasing
 import com.google.android.gms.location.*
 import de.darmstadt.tk.data.Event
-import de.darmstadt.tk.repo.MemEventRepo
-import java.time.Instant
-import java.time.LocalTime
-import java.time.format.DateTimeFormatter
 import de.darmstadt.tk.service.ServiceLocator
 import android.text.TextUtils
 
@@ -24,7 +18,7 @@ class GeoFenceReceiver : BroadcastReceiver() {
     val ulb = ServiceLocator.getUlbService()
 
     override fun onReceive(context: Context?, intent: Intent?) {
-        Log.i(TAG, "Received: $intent")
+        Log.i(TAG, "GEO-Received: $intent")
         val geofencingEvent = GeofencingEvent.fromIntent(intent)
         if (geofencingEvent.hasError()) {
             val errorMessage = GeofenceStatusCodes
@@ -36,21 +30,24 @@ class GeoFenceReceiver : BroadcastReceiver() {
         // Get the transition type.
         val geofenceTransition = geofencingEvent.geofenceTransition
 
+        // Get the geofences that were triggered. A single event can trigger
+        // multiple geofences.
+        val triggeringGeofences = geofencingEvent.triggeringGeofences
+
+        // Get the transition details as a String.
+        val geofenceTransitionDetails = getGeofenceTransitionDetails(
+            geofenceTransition,
+            triggeringGeofences
+        )
+        Log.i(TAG, "GeoFences: $geofenceTransitionDetails")
+
         // Test that the reported transition was of interest.
         if (geofenceTransition == Geofence.GEOFENCE_TRANSITION_ENTER || geofenceTransition == Geofence.GEOFENCE_TRANSITION_EXIT) {
 
-            // Get the geofences that were triggered. A single event can trigger
-            // multiple geofences.
-            val triggeringGeofences = geofencingEvent.triggeringGeofences
 
-            // Get the transition details as a String.
-            val geofenceTransitionDetails = getGeofenceTransitionDetails(
-                geofenceTransition,
-                triggeringGeofences
-            )
 
             if (ulb.geoFence.requestId in triggeringGeofences.map { e->e.requestId }) {
-                ulb.updateTransition(geofenceTransition == Geofence.GEOFENCE_TRANSITION_ENTER)
+                ulb.updateFence(context!!,geofenceTransition == Geofence.GEOFENCE_TRANSITION_ENTER)
 
                 repo.insertEvent(Event("GeoFence-API", "Entered (${ulb.inUlb}) ULB"))
             }

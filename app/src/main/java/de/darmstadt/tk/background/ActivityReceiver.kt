@@ -4,14 +4,10 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.util.Log
-import androidx.compose.animation.core.LinearOutSlowInEasing
 import com.google.android.gms.location.ActivityTransition
 import com.google.android.gms.location.ActivityTransitionResult
 import de.darmstadt.tk.data.Event
-import de.darmstadt.tk.repo.MemEventRepo
-import java.time.Instant
 import java.time.LocalTime
-import java.time.format.DateTimeFormatter
 import com.google.android.gms.location.DetectedActivity
 import de.darmstadt.tk.service.ServiceLocator
 
@@ -31,7 +27,10 @@ class ActivityReceiver : BroadcastReceiver() {
                 val type = getActivityTransitionString(event.transitionType)
 
                 if (event.activityType == DetectedActivity.STILL)
-                    ulb.updateTransition(event.transitionType == ActivityTransition.ACTIVITY_TRANSITION_ENTER)
+                    ulb.updateTransition(
+                        context!!,
+                        event.transitionType == ActivityTransition.ACTIVITY_TRANSITION_ENTER
+                    )
 
                 val desc = "${LocalTime.now()} :: $name ($type) - Elapsed: ${event.elapsedRealTimeNanos/1_000_000_000} sec"
                 repo.insertEvent(Event("Transitions-API", desc))

@@ -16,6 +16,15 @@ import com.google.android.gms.tasks.OnSuccessListener
 import de.darmstadt.tk.BuildConfig
 import de.darmstadt.tk.data.Event
 import de.darmstadt.tk.service.ServiceLocator
+import com.google.android.gms.location.GeofencingRequest
+import androidx.core.content.ContextCompat.startActivity
+
+import android.os.Build
+
+import android.app.NotificationManager
+import android.content.Context
+import android.provider.Settings
+import androidx.core.content.ContextCompat
 
 
 class MainViewModel(var appCtx: Application) : AndroidViewModel(appCtx) {
@@ -49,7 +58,11 @@ class MainViewModel(var appCtx: Application) : AndroidViewModel(appCtx) {
         listOfFences += ulb.geoFence
 
         val req = GeofencingRequest.Builder().addGeofences(listOfFences)
-            .setInitialTrigger(GeofencingRequest.INITIAL_TRIGGER_EXIT)
+            .setInitialTrigger(
+                GeofencingRequest.INITIAL_TRIGGER_DWELL or
+                        GeofencingRequest.INITIAL_TRIGGER_ENTER or
+                        GeofencingRequest.INITIAL_TRIGGER_EXIT
+            )
             .build()
 
         val intent = Intent(GEO_RECEIVER_ACTION)

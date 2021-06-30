@@ -2,11 +2,14 @@ package de.darmstadt.tk
 
 import android.Manifest
 import android.annotation.TargetApi
+import android.app.NotificationManager
 import android.content.Context
+import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -39,7 +42,25 @@ class MainActivity : ComponentActivity() {
     private var mTransitionsReceiver: ActivityReceiver? = null;
     private var mSleepReceiver: SleepReceiver? = null;
     private var mGeofenceReceiver: GeoFenceReceiver? = null;
+    private lateinit var notificationManager: NotificationManager
 
+
+    val startForResult =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult())
+        { result ->
+            Log.i(TAG, "DDD- CHANGED to $result")
+
+            if (notificationManager.isNotificationPolicyAccessGranted)
+                checkPermissions(emptyList())
+            else
+                ServiceLocator.getRepository().insertEvent(
+                    Event(
+                        "DoNotDisturb",
+                        "Please enable do not Disturb for this app!"
+                    )
+                )
+
+        }
 
     val requestPermissionLauncher =
         registerForActivityResult(
@@ -47,7 +68,7 @@ class MainActivity : ComponentActivity() {
         ) { isGranted: Boolean ->
             if (isGranted) {
                 Log.i(TAG, "Perm was GRANTED")
-                viewModel.startTracking()
+                checkPermissions(emptyList())
             } else {
                 ServiceLocator.getRepository()
                     .insertEvent(Event("PERMISSION MISSING", "No permission to run the app"))
@@ -74,42 +95,40 @@ class MainActivity : ComponentActivity() {
                     Log.i(TAG, "${it.key} not granted")
                 }
             }
-            if (allGranted) {
-                Log.i(TAG, "All required permissions granted!")
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
-                    checkBackgroundLocationPermissionAPI30()
-                else
-                    viewModel.startTracking()
-            }
+            checkPermissions(emptyList())
         }
 
 
     @TargetApi(30)
-    private fun checkBackgroundLocationPermissionAPI30() {
-        if (ContextCompat.checkSelfPermission(
-                applicationContext,
-                Manifest.permission.ACCESS_BACKGROUND_LOCATION
-            ) == PackageManager.PERMISSION_GRANTED
-        ) {
-            Log.i(TAG, "Permission ACCESS_BACKGROUND_LOCATION GRANTED")
-            viewModel.startTracking()
-            return
-        } else {
-            AlertDialog.Builder(this)
-                .setTitle("Need Background Location")
-                .setMessage("Need location for geofencing API to ensure a smoother operation! Please grant this app the 'Always option'")
-                .setPositiveButton("Grant 'Always'") { _, _ ->
-                    // this request will take user to Application's Setting page
-                    requestPermissionLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
-                }
-                .setNegativeButton("Abort") { dialog, _ ->
-                    dialog.dismiss()
-                }
-                .create()
-                .show()
-        }
+    private fun askBackgroundLocationPermissionAPI30() {
+        AlertDialog.Builder(this)
+            .setTitle("Need Background Location")
+            .setMessage("Need location for geofencing API to ensure a smoother operation! Please grant this app the 'Always option'")
+            .setPositiveButton("Grant 'Always'") { _, _ ->
+                // this request will take user to Application's Setting page
+                requestPermissionLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+            }
+            .setNegativeButton("Abort") { dialog, _ ->
+                dialog.dismiss()
+            }
+            .create()
+            .show()
+    }
 
+    private fun askDoNotDisturbePermission() {
+        AlertDialog.Builder(this)
+            .setTitle("Need Do Not Disturb access")
+            .setMessage("Enable Do Not Disturb access for the app")
+            .setPositiveButton("Grant") { _, _ ->
+                // this request will take user to Application's Setting page
 
+                startForResult.launch(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS))
+            }
+            .setNegativeButton("Abort") { dialog, _ ->
+                dialog.dismiss()
+            }
+            .create()
+            .show()
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -117,6 +136,8 @@ class MainActivity : ComponentActivity() {
         mTransitionsReceiver = ActivityReceiver()
         mSleepReceiver = SleepReceiver()
         mGeofenceReceiver = GeoFenceReceiver()
+        notificationManager =
+            applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
 //        setupWorkers()
         val permissions = mutableListOf(
@@ -148,6 +169,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onStart() {
         super.onStart()
+
         registerReceiver(mTransitionsReceiver, IntentFilter(viewModel.TRANSITIONS_RECEIVER_ACTION));
         registerReceiver(mSleepReceiver, IntentFilter(viewModel.SLEEP_RECEIVER_ACTION));
         registerReceiver(mGeofenceReceiver, IntentFilter(viewModel.GEO_RECEIVER_ACTION));
@@ -155,7 +177,6 @@ class MainActivity : ComponentActivity() {
 
     private fun checkPermissions(permissions: List<String>) {
         val requestPerm = mutableListOf<String>()
-        var allGranted = true
 
         permissions.forEach { perm ->
             if (ContextCompat.checkSelfPermission(
@@ -168,7 +189,6 @@ class MainActivity : ComponentActivity() {
                 requestPerm.add(perm)
             }
         }
-
         if (requestPerm.isNotEmpty()) {
             viewModel.viewModelScope.launch(Dispatchers.Default) {
                 requestMultiplePermissions.launch(
@@ -176,34 +196,17 @@ class MainActivity : ComponentActivity() {
                 )
             }
         } else {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
-                checkBackgroundLocationPermissionAPI30()
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && ContextCompat.checkSelfPermission(
+                    applicationContext,
+                    Manifest.permission.ACCESS_BACKGROUND_LOCATION
+                ) != PackageManager.PERMISSION_GRANTED
+            )
+                askBackgroundLocationPermissionAPI30()
+            else if (!notificationManager.isNotificationPolicyAccessGranted)
+                askDoNotDisturbePermission()
             else
                 viewModel.startTracking()
         }
-    }
-
-    private fun checkPermission(permissionToCheck: String) {
-        viewModel.viewModelScope.launch(Dispatchers.Default) {
-
-            when {
-                ContextCompat.checkSelfPermission(
-                    applicationContext,
-                    permissionToCheck
-                ) == PackageManager.PERMISSION_GRANTED -> {
-                    Log.i(TAG, "Permission $permissionToCheck GRANTED")
-                    viewModel.startTracking()
-                }
-                else -> {
-                    // You can directly ask for the permission.
-                    // The registered ActivityResultCallback gets the result of this request.
-                    requestPermissionLauncher.launch(
-                        permissionToCheck
-                    )
-                }
-            }
-        }
-
     }
 
     private fun setupWorkers() {
