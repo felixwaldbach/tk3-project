@@ -16,6 +16,7 @@ class ActivityReceiver : BroadcastReceiver() {
     val TAG = "ActivityReceiver"
     val repo = ServiceLocator.getRepository()
     val ulb = ServiceLocator.getUlbService()
+    val rewe = ServiceLocator.getReweService()
 
     override fun onReceive(context: Context?, intent: Intent?) {
         Log.i(TAG, "Received: $intent")
@@ -31,9 +32,14 @@ class ActivityReceiver : BroadcastReceiver() {
                         context!!,
                         event.transitionType == ActivityTransition.ACTIVITY_TRANSITION_ENTER
                     )
+                if(event.activityType == DetectedActivity.WALKING)
+                    rewe.updateTransition(
+                        context!!,
+                        event.transitionType == ActivityTransition.ACTIVITY_TRANSITION_ENTER
+                    )
 
-                val desc = "${LocalTime.now()} :: $name ($type) - Elapsed: ${event.elapsedRealTimeNanos/1_000_000_000} sec"
-                repo.insertEvent(Event("Transitions-API", desc))
+                //val desc = "${LocalTime.now()} :: $name ($type) - Elapsed: ${event.elapsedRealTimeNanos/1_000_000_000} sec"
+                //repo.insertEvent(Event("Transitions-API", desc))
             }
         }
     }

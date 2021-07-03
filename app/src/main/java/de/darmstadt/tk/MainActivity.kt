@@ -1,12 +1,14 @@
 package de.darmstadt.tk
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.annotation.TargetApi
 import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
+import android.location.Location
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
@@ -33,26 +35,18 @@ import de.darmstadt.tk.viewmodel.MainViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.util.concurrent.TimeUnit
-import android.app.PendingIntent
-import android.content.Context
-import android.content.Intent
-import android.location.Location
 import android.location.LocationManager
 import android.net.Uri
 import android.os.Looper
-import android.provider.Settings
-import android.view.View
-import android.widget.TextView
 import android.widget.Toast
-import androidx.core.app.ActivityCompat
 import com.google.android.gms.location.*
-import com.google.android.gms.location.R
 import kotlin.concurrent.fixedRateTimer
 
 class MainActivity : ComponentActivity() {
 
     val TAG = "MainActivity"
     private val viewModel by viewModels<MainViewModel>()
+    val repo = ServiceLocator.getRepository()
 
     private var mTransitionsReceiver: ActivityReceiver? = null;
     private var mSleepReceiver: SleepReceiver? = null;
@@ -61,6 +55,9 @@ class MainActivity : ComponentActivity() {
 
     lateinit var geofencingClient: GeofencingClient
     lateinit var mFusedLocationClient: FusedLocationProviderClient
+
+    private var lat = 0.0f
+    private var long = 0.0f
 
     val startForResult =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult())
@@ -115,6 +112,12 @@ class MainActivity : ComponentActivity() {
             checkPermissions(emptyList())
         }
 
+    private val mLocationCallback = object : LocationCallback() {
+        override fun onLocationResult(locationResult: LocationResult) {
+            var mLastLocation: Location = locationResult.lastLocation
+            repo.insertEvent(Event("mLastLocation", "Lat: " + mLastLocation.latitude.toString() + ", Long: " + mLastLocation.longitude.toString()))
+        }
+    }
 
     @TargetApi(30)
     private fun askBackgroundLocationPermissionAPI30() {
@@ -150,8 +153,10 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        mFusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
+
         mTransitionsReceiver = ActivityReceiver()
-        mAldiReceiver = AldiReceiver()
         mSleepReceiver = SleepReceiver()
         mGeofenceReceiver = GeoFenceReceiver()
         notificationManager =
@@ -191,6 +196,8 @@ class MainActivity : ComponentActivity() {
         registerReceiver(mTransitionsReceiver, IntentFilter(viewModel.TRANSITIONS_RECEIVER_ACTION));
         registerReceiver(mSleepReceiver, IntentFilter(viewModel.SLEEP_RECEIVER_ACTION));
         registerReceiver(mGeofenceReceiver, IntentFilter(viewModel.GEO_RECEIVER_ACTION));
+
+        startLocationLogging()
     }
 
     private fun checkPermissions(permissions: List<String>) {
@@ -274,55 +281,44 @@ class MainActivity : ComponentActivity() {
         )
     }
 
-    private fun getGeofencingRequest(): GeofencingRequest {
-        return GeofencingRequest.Builder().apply {
-            setInitialTrigger(GeofencingRequest.INITIAL_TRIGGER_ENTER)
-            addGeofences(geofenceList)
-        }.build()
-    }
-
-    private fun getUrlFromIntent() {
-        val url = "https://www.aldi-sued.de/de/angebote.html"
-        val intent = Intent(Intent.ACTION_VIEW)
-        intent.data = Uri.parse(url)
-        startActivity(intent)
-    }
-
     @SuppressLint("MissingPermission")
-    private fun requestNewLocationData() {
-        var mLocationRequest = LocationRequest()
-        mLocationRequest.priority = LocationRequest.PRIORITY_HIGH_ACCURACY
-        mLocationRequest.interval = 0
-        mLocationRequest.fastestInterval = 0
-        mLocationRequest.numUpdates = 1
-
-        mFusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
-        mFusedLocationClient!!.requestLocationUpdates(
-            mLocationRequest, mLocationCallback,
-            Looper.myLooper()
-        )
-    }
-
-    @SuppressLint("MissingPermission")
-    private fun getLastLocation() {
+    private fun getLocation() {
         if (isLocationEnabled()) {
 
             mFusedLocationClient.lastLocation.addOnCompleteListener(this) { task ->
                 var location: Location? = task.result
-                if (location == null) {
-                    requestNewLocationData()
-                } else {
-                    if(lat != location.latitude.toFloat() || long != location.longitude.toFloat()) {
-                        lat = location.latitude.toFloat()
-                        long = location.longitude.toFloat()
-                        repo.insertEvent(Event("Last Location", "Lat: " + lat + ", Long: " + long))
-                    }
-                }
+                //if (location == null) {
+                    var mLocationRequest = LocationRequest()
+                    mLocationRequest.priority = LocationRequest.PRIORITY_HIGH_ACCURACY
+                    mLocationRequest.interval = 0
+                    mLocationRequest.fastestInterval = 0
+                    mLocationRequest.numUpdates = 1
+
+                    mFusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
+                    mFusedLocationClient!!.requestLocationUpdates(
+                        mLocationRequest, mLocationCallback,
+                        Looper.myLooper()
+                    )
+//                } else {
+//                    if(lat != location.latitude.toFloat() || long != location.longitude.toFloat()) {
+//                        lat = location.latitude.toFloat()
+//                        long = location.longitude.toFloat()
+//                        repo.insertEvent(Event("Last Location", "Lat: " + lat + ", Long: " + long))
+//                    }
+//                }
             }
         } else {
             Toast.makeText(this, "Turn on location", Toast.LENGTH_LONG).show()
             val intent = Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)
             startActivity(intent)
+        }
+    }
+
+    private fun startLocationLogging() {
+        fixedRateTimer("location", false, 0L, 1000) {
+            this@MainActivity.runOnUiThread {
+                getLocation()
+            }
         }
     }
 

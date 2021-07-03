@@ -6,8 +6,12 @@ import de.darmstadt.tk.repo.MemEventRepo
 object ServiceLocator {
     private val repo by lazy { MemEventRepo() }
     private val ulb by lazy { UlbService() }
+    private val rewe by lazy { ReweService() }
+
     fun getRepository(): EventRepo = repo
 
     fun getUlbService(): UlbService = ulb
+
+    fun getReweService(): ReweService = rewe
 
 }
