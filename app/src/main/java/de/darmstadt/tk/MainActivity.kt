@@ -27,7 +27,7 @@ import de.darmstadt.tk.viewmodel.MainViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.util.concurrent.TimeUnit
-import android.app.PendingIntent;
+import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.location.Location
@@ -38,6 +38,7 @@ import android.provider.Settings
 import android.view.View
 import android.widget.TextView
 import android.widget.Toast
+import androidx.core.app.ActivityCompat
 import com.google.android.gms.location.*
 import com.google.android.gms.location.R
 import kotlin.concurrent.fixedRateTimer
@@ -47,14 +48,16 @@ class MainActivity : ComponentActivity() {
     val TAG = "MainActivity"
     private val viewModel by viewModels<MainViewModel>()
 
-    private var mTransitionsReceiver: ActivityReceiver? = null;
-    private var mAldiReceiver: AldiReceiver? = null;
-    private var mSleepReceiver: SleepReceiver? = null;
+    private var mTransitionsReceiver: ActivityReceiver? = null
+    private var mAldiReceiver: AldiReceiver? = null
+    private var mSleepReceiver: SleepReceiver? = null
 
     lateinit var geofencingClient: GeofencingClient
     lateinit var mFusedLocationClient: FusedLocationProviderClient
 
     var geofenceList: MutableList<Geofence> = mutableListOf()
+    var lat = 0.0f
+    var long = 0.0f
 
     val repo = ServiceLocator.getRepository()
 
@@ -92,12 +95,6 @@ class MainActivity : ComponentActivity() {
 
         mFusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
 
-        fixedRateTimer("location", false, 0L, 1000) {
-            this@MainActivity.runOnUiThread {
-                getLastLocation()
-            }
-        }
-
         // getLastLocation()
 
 //        setupWorkers()
@@ -119,7 +116,29 @@ class MainActivity : ComponentActivity() {
 
         Log.i(TAG, geofenceList.get(0).toString())
 
+        if (ContextCompat.checkSelfPermission(this@MainActivity,
+                Manifest.permission.ACCESS_FINE_LOCATION) !==
+            PackageManager.PERMISSION_GRANTED) {
+            if (ActivityCompat.shouldShowRequestPermissionRationale(this@MainActivity,
+                    Manifest.permission.ACCESS_FINE_LOCATION)) {
+                ActivityCompat.requestPermissions(this@MainActivity,
+                    arrayOf(Manifest.permission.ACCESS_FINE_LOCATION), 1)
+            } else {
+                ActivityCompat.requestPermissions(this@MainActivity,
+                    arrayOf(Manifest.permission.ACCESS_FINE_LOCATION), 1)
+            }
+        }
+
         checkPermission()
+
+
+
+        fixedRateTimer("location", false, 0L, 1000) {
+            this@MainActivity.runOnUiThread {
+                getLastLocation()
+            }
+        }
+
         mTransitionsReceiver = ActivityReceiver()
         mAldiReceiver = AldiReceiver()
         mSleepReceiver = SleepReceiver()
@@ -157,6 +176,26 @@ class MainActivity : ComponentActivity() {
         registerReceiver(mAldiReceiver, IntentFilter(viewModel.ALDI_RECEIVER_ACTION))
         isLocationEnabled()
         // getUrlFromIntent()
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>,
+                                            grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        when (requestCode) {
+            1 -> {
+                if (grantResults.isNotEmpty() && grantResults[0] ==
+                    PackageManager.PERMISSION_GRANTED) {
+                    if ((ContextCompat.checkSelfPermission(this@MainActivity,
+                            Manifest.permission.ACCESS_FINE_LOCATION) ===
+                                PackageManager.PERMISSION_GRANTED)) {
+                        Toast.makeText(this, "Permission Granted", Toast.LENGTH_SHORT).show()
+                    }
+                } else {
+                    Toast.makeText(this, "Permission Denied", Toast.LENGTH_SHORT).show()
+                }
+                return
+            }
+        }
     }
 
     private fun checkPermission() {
@@ -266,7 +305,11 @@ class MainActivity : ComponentActivity() {
                 if (location == null) {
                     requestNewLocationData()
                 } else {
-                    repo.insertEvent(Event("Last Location", "Lat: " + location.latitude.toString() + ", Long: " + location.longitude.toString()))
+                    if(lat != location.latitude.toFloat() || long != location.longitude.toFloat()) {
+                        lat = location.latitude.toFloat()
+                        long = location.longitude.toFloat()
+                        repo.insertEvent(Event("Last Location", "Lat: " + lat + ", Long: " + long))
+                    }
                 }
             }
         } else {
