@@ -115,7 +115,7 @@ class MainActivity : ComponentActivity() {
     private val mLocationCallback = object : LocationCallback() {
         override fun onLocationResult(locationResult: LocationResult) {
             var mLastLocation: Location = locationResult.lastLocation
-            repo.insertEvent(Event("mLastLocation", "Lat: " + mLastLocation.latitude.toString() + ", Long: " + mLastLocation.longitude.toString()))
+            //repo.insertEvent(Event("mLastLocation", "Lat: " + mLastLocation.latitude.toString() + ", Long: " + mLastLocation.longitude.toString()))
         }
     }
 
