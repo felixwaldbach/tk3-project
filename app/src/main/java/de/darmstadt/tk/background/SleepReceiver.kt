@@ -35,7 +35,7 @@ class SleepReceiver : BroadcastReceiver() {
                 val sleepDurationmili = sleep.segmentDurationMillis
                 val desc =
                     "${LocalTime.now()} :: Start Time: ${formatter.format(startTime)}, duration: ${sleepDurationmili / 1_000} sec, endtime: ${formatter.format(endTime)}"
-                repo.insertEvent(Event("Sleep-API", desc))
+//                repo.insertEvent(Event("Sleep-API", desc))
             }
         } else if (SleepClassifyEvent.hasEvents(intent)) {
             val sleepClassifyEvents: List<SleepClassifyEvent> =
@@ -44,7 +44,7 @@ class SleepReceiver : BroadcastReceiver() {
 
             for (sleep in sleepClassifyEvents) {
                 val desc = "${LocalTime.now()} :: Confidence: ${sleep.confidence}, light: ${sleep.light}, motion ${sleep.motion}"
-                repo.insertEvent(Event("Sleep-API", desc))
+//                repo.insertEvent(Event("Sleep-API", desc))
             }
         }
     }

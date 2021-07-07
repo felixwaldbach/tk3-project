@@ -49,7 +49,7 @@ class GeoFenceReceiver : BroadcastReceiver() {
             if (ulb.geoFence.requestId in triggeringGeofences.map { e->e.requestId }) {
                 ulb.updateFence(context!!,geofenceTransition == Geofence.GEOFENCE_TRANSITION_ENTER)
 
-                repo.insertEvent(Event("GeoFence-API", "Entered (${ulb.inUlb}) ULB"))
+                repo.insertEvent(Event("GeoFence-API", "Inside ULB fence?: ${ulb.inUlb})"))
             }
         } else {
             // Log the error.
