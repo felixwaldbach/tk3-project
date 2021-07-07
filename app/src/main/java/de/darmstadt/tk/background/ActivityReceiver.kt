@@ -45,8 +45,8 @@ class ActivityReceiver : BroadcastReceiver() {
                     )
 
 
-                //val desc = "${LocalTime.now()} :: $name ($type) - Elapsed: ${event.elapsedRealTimeNanos/1_000_000_000} sec"
-                //repo.insertEvent(Event("Transitions-API", desc))
+                val desc = "${LocalTime.now()} :: $name ($type) - Elapsed: ${event.elapsedRealTimeNanos/1_000_000_000} sec"
+                repo.insertEvent(Event("Transitions-API", desc))
             }
         }
     }
