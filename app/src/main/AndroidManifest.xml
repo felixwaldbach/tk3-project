@@ -49,6 +49,7 @@
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </receiver>
+        <receiver android:name=".GeofenceBroadcastReceiver"/>
 
         <receiver android:name="de.darmstadt.tk.background.GeoFenceReceiver"/>
     </application>

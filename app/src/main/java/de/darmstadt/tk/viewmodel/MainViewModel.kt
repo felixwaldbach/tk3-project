@@ -31,6 +31,8 @@ class MainViewModel(var appCtx: Application) : AndroidViewModel(appCtx) {
     private val TAG: String = this::class.java.name
     val repo = ServiceLocator.getRepository()
     val ulb = ServiceLocator.getUlbService()
+    val rewe = ServiceLocator.getReweService()
+    val herrngarten = ServiceLocator.getHerrngartenService()
 
     var eventList = repo.fetchEvents()
 
@@ -56,6 +58,8 @@ class MainViewModel(var appCtx: Application) : AndroidViewModel(appCtx) {
 
 
         listOfFences += ulb.geoFence
+        listOfFences += rewe.geoFence
+        listOfFences += herrngarten.geoFence
 
         val req = GeofencingRequest.Builder().addGeofences(listOfFences)
             .setInitialTrigger(

@@ -16,6 +16,8 @@ class GeoFenceReceiver : BroadcastReceiver() {
     val TAG = "GeoFenceReceiver"
     val repo = ServiceLocator.getRepository()
     val ulb = ServiceLocator.getUlbService()
+    val rewe = ServiceLocator.getReweService()
+    val herrngarten = ServiceLocator.getHerrngartenService()
 
     override fun onReceive(context: Context?, intent: Intent?) {
         Log.i(TAG, "GEO-Received: $intent")
@@ -50,6 +52,19 @@ class GeoFenceReceiver : BroadcastReceiver() {
                 ulb.updateFence(context!!,geofenceTransition == Geofence.GEOFENCE_TRANSITION_ENTER)
 
                 repo.insertEvent(Event("GeoFence-API", "Inside ULB fence?: ${ulb.inUlb})"))
+            }
+
+
+            if (rewe.geoFence.requestId in triggeringGeofences.map { e->e.requestId }) {
+                rewe.updateFence(context!!,geofenceTransition == Geofence.GEOFENCE_TRANSITION_ENTER)
+
+                repo.insertEvent(Event("GeoFence-API", "Entered (${rewe.inRewe}) REWE"))
+            }
+
+            if (herrngarten.geoFence.requestId in triggeringGeofences.map { e->e.requestId }) {
+                herrngarten.updateFence(context!!,geofenceTransition == Geofence.GEOFENCE_TRANSITION_ENTER)
+
+                repo.insertEvent(Event("GeoFence-API", "Entered (${herrngarten.inHerrngarten}) Herrngarten"))
             }
         } else {
             // Log the error.
